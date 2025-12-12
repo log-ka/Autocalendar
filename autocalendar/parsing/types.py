@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import date, datetime, time
 from decimal import Decimal
+from dataclasses import dataclass
+from datetime import datetime, date, time
 from typing import Optional
 
 
@@ -12,12 +12,14 @@ class MoneyValue:
     currency: str  # "EUR", "USD", "RUB"
 
 
-@dataclass(frozen=True)
+@dataclass
 class ParsedEvent:
     raw: str
-    title: str                 # “очищенный” заголовок
-    dt: Optional[datetime]     # tz-aware datetime
+    title: str
+    dt: Optional[datetime]
     d: Optional[date]
     t: Optional[time]
-    price: Optional[MoneyValue]
-    leftovers: str             # остаток после вырезания сущностей (если хочешь)
+    price: Optional["MoneyValue"]
+    duration: Optional[int]
+    explicit_duration: bool
+    leftovers: str

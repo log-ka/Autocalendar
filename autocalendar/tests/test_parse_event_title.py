@@ -24,7 +24,7 @@ class Case:
     exp_dt: datetime | None = None
 
     # If dt exists, ensure tzinfo key equals this (ZoneInfo.key usually)
-    exp_tz_key: str | None = "Europe/Amsterdam"
+    exp_tz_key: str | None = "Europe/Moscow"
 
     # Substrings that must NOT remain in leftovers
     leftovers_must_not_contain: tuple[str, ...] = ()
@@ -194,9 +194,8 @@ def run_tests() -> None:
             exp_dt=datetime(2025, 12, 13, 20, 0, tzinfo=tz),
             leftovers_must_not_contain=("1200", "1200р", "завтра", "20:00"),
             price_should_exist=True,
-            # Если у тебя валюта/сумма точно нормализуются — раскомментируй:
-            # exp_price_amount=1200,
-            # exp_price_currency="RUB",
+            exp_price_amount=1200,
+            exp_price_currency="RUB",
         ),
         Case(
             name="no_datetime",

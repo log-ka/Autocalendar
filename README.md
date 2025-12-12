@@ -1,181 +1,174 @@
-
 # Autocalendar
 
-Human-friendly event title parser for natural language input (Russian).
+**Autocalendar** — это интеллектуальный CLI‑инструмент для превращения неструктурированного текста в упорядоченный календарный план.
+Проект фокусируется не на «распознавании слов», а на **семантике намерений пользователя**: что является жёстким событием, что гибкой задачей, а что пока не имеет достаточно данных.
 
-`autocalendar` converts short, informal event descriptions into a structured,
-timezone-aware representation suitable for calendars, reminders, and planners.
-
----
-
-## ✨ Features
-
-- Natural language date & time parsing (RU)
-- Explicit date formats: `DD.MM`
-- Relative dates: `завтра`, `сегодня`, weekdays (`понедельник`)
-- Time-only fallback: `15:30`
-- Money extraction: `1200р`, `10€`, `$5`
-- Timezone-aware datetimes (`zoneinfo`)
-- Deterministic behavior
-- Core logic fully covered by tests
+Проект находится в состоянии **v1.0 (стабильная логика парсинга)**.
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Основная идея
 
-```python
-from datetime import datetime
-from zoneinfo import ZoneInfo
+Пользователь вводит список задач в свободной форме:
 
-from autocalendar.parsing import parse_event_title
-
-now = datetime(2025, 12, 12, 10, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))
-
-event = parse_event_title(
-    "Кино 1200р завтра 20:00",
-    now=now,
-    tz=ZoneInfo("Europe/Amsterdam"),
-)
-
-print(event)
-````
-
-**Output:**
-
-```text
-ParsedEvent(
-  raw='Кино 1200р завтра 20:00',
-  title='Кино',
-  dt=2025-12-13 20:00+01:00,
-  d=2025-12-13,
-  t=20:00,
-  price=MoneyValue(amount=1200, currency='RUB'),
-  leftovers=''
-)
+```
+Задача завтра
+Задача 45 мин
+Задача 10:00-11:30
 ```
 
+Autocalendar:
+
+* извлекает дату, время, длительность;
+* классифицирует события на **fixed** и **flexible**;
+* автоматически планирует гибкие задачи в рабочий день;
+* отправляет неполные задачи в **Inbox**.
+
 ---
 
-## 📦 API
+## ✨ Возможности
 
-### `parse_event_title`
+* 📅 Парсинг дат: `сегодня`, `завтра`, `13.12`
+* ⏰ Парсинг времени: `10:00`, `10:00–11:30`
+* ⏱ Парсинг длительности: `45 мин`, `1.5 часа`
+* 🧠 Явное различие между **заданным временем** и **вычисленным временем**
+* 📥 Inbox для задач без даты
+* 🔁 Автопланирование гибких задач в рабочие часы
+* 🧪 Контрактные тесты (pytest)
 
-```python
-parse_event_title(
-    text: str,
-    *,
-    now: datetime,
-    tz: ZoneInfo,
-    language: str = "ru",
-) -> ParsedEvent
+---
+
+## 🧩 Архитектура проекта
+
+Проект организован как модульная система:
+
+```
+autocalendar/
+├── parsing/          # извлечение сущностей из текста
+│   ├── datetime_extractor.py
+│   ├── duration_extractor.py
+│   ├── money_extractor.py
+│   ├── parser.py
+│   └── types.py
+├── scheduling/       # автопланирование
+├── inbox/            # задачи без даты
+└── main.py           # CLI‑точка входа
+
+M4/
+└── Parsing_Rules_v1.md
+
+tests/
+└── test_duration_parse.py
 ```
 
-Parses a human-readable event title into a structured representation.
+Ключевая идея архитектуры:
 
-#### Parameters
-
-* **`text`** — raw user input
-* **`now`** — reference datetime (must be timezone-aware)
-* **`tz`** — target timezone (`zoneinfo.ZoneInfo`)
-* **`language`** — parsing language (`ru` supported)
-
-#### Returns
-
-`ParsedEvent`
+> **Парсер ничего не планирует, а планировщик ничего не угадывает.**
 
 ---
 
-### `ParsedEvent`
+## 🧠 Семантические принципы (v1)
 
-| Field       | Type                 | Description                    |
-| ----------- | -------------------- | ------------------------------ |
-| `raw`       | `str`                | Original input                 |
-| `title`     | `str`                | Cleaned event title            |
-| `dt`        | `datetime \| None`   | Full datetime (timezone-aware) |
-| `d`         | `date \| None`       | Date component                 |
-| `t`         | `time \| None`       | Time component                 |
-| `price`     | `MoneyValue \| None` | Extracted money value          |
-| `leftovers` | `str`                | Unparsed remainder             |
+* Время считается заданным **только если пользователь указал его явно**
+* Если время не указано → событие гибкое
+* Длительность применяется **только если указана явно**
+* Временной диапазон (`10:00–11:30`) трактуется как:
 
----
+  * фиксированное время начала
+  * вычисляемая длительность
+* Если дата не указана → задача попадает в Inbox
 
-### `MoneyValue`
+Подробно правила зафиксированы в:
 
-| Field      | Type      | Description                         |
-| ---------- | --------- | ----------------------------------- |
-| `amount`   | `Decimal` | Numeric value                       |
-| `currency` | `str`     | Currency code (`RUB`, `EUR`, `USD`) |
+📄 `M4/Parsing_Rules_v1.md`
 
 ---
 
-## 🧪 Testing
+## ▶️ Запуск проекта
 
-Run all parser tests:
+### 1. Клонирование
 
 ```bash
-python -m autocalendar.tests.test_parse_event_title
+git clone https://github.com/log-ka/Autocalendar.git
+cd Autocalendar
 ```
 
-Covered scenarios:
+### 2. Виртуальное окружение
 
-* explicit dates (`13.12 09:00`)
-* relative dates (`завтра`)
-* weekdays (`в понедельник`)
-* time-only input (`15:45`)
-* money + datetime (`1200р завтра`)
-* input without datetime
+```bash
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+# source .venv/bin/activate  # Linux / macOS
+```
 
-Tests act as a **formal specification** of parser behavior.
+### 3. Установка зависимостей
 
----
+```bash
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+```
 
-## 🧭 Design Principles
+### 4. Запуск
 
-* **Explicit formats > NLP**
-  (`DD.MM` has priority over fuzzy parsing)
+```bash
+python main.py
+```
 
-* **Deterministic behavior**
-  Same input + same `now` → same output
+Вводите задачи построчно. Для завершения введите:
 
-* **Pipeline architecture**
-  `normalize → extract datetime → extract money → cleanup`
-
-* **Tests as documentation**
-  If a case matters — it must be covered by a test
-
----
-
-## ⚠️ Known Limitations
-
-* Russian language only
-* No duration parsing (`2 часа`)
-* No recurrence (`каждый вторник`)
-* No time ranges (`с 10 до 12`)
-* No location parsing
-
-These features are intentionally out of scope for v0.x.
-
----
-
-## 📂 Project Structure
-
-```text
-autocalendar/
-├── parsing/
-│   ├── parser.py
-│   ├── datetime_extractor.py
-│   ├── money_extractor.py
-│   ├── cleanup.py
-│   ├── normalize.py
-│   └── types.py
-├── tests/
-│   └── test_parse_event_title.py
-├── config.py
-└── __init__.py
+```
+q
 ```
 
 ---
 
-## 📄 License
+## 🧪 Тестирование
+
+Проект использует **pytest**.
+
+Запуск всех тестов:
+
+```bash
+pytest
+```
+
+Ключевой файл:
+
+```
+tests/test_duration_parse.py
+```
+
+Он фиксирует **Parsing Rules v1** и защищает проект от регрессий.
+
+---
+
+## 🧱 Статус проекта
+
+* ✅ Parsing Rules v1 зафиксированы
+* ✅ Контрактные тесты написаны
+* ✅ Поведение детерминировано
+* 🔜 Улучшение UX и сценариев планирования
+
+Проект готов как база для:
+
+* GUI / Web интерфейса
+* интеграции с Google Calendar
+* расширения языковых правил
+
+---
+
+## 📌 Лицензия
 
 MIT License
+
+---
+
+## 👤 Автор
+
+**Vcsapi**
+Python / ML / Systems Thinking
+
+---
+
+> Autocalendar — это не календарь.
+> Это слой смысла между текстом и временем.

@@ -25,7 +25,13 @@ def _to_minutes(time_str: str) -> Optional[int]:
         return None
 
 
-def extract_duration(text: str) -> Tuple[Optional[int], bool, str]:
+def extract_duration(
+    text: str,
+    *,
+    raw_text: str | None = None,
+     dt=None,
+     explicit_time: bool = False,
+) -> Tuple[Optional[int], bool, str]:
     """
     Returns:
         duration_minutes | None
@@ -36,6 +42,21 @@ def extract_duration(text: str) -> Tuple[Optional[int], bool, str]:
     if not isinstance(text, str):
         raise TypeError(f"extract_duration expected str, got {type(text)}")
 
+    # 1. time range: 10:00-11:30
+    if explicit_time and dt:
+        source = raw_text if raw_text is not None else text
+        m = _TIME_RANGE_RE.search(source)
+        if m:
+            start = _to_minutes(m.group("start"))
+            end = _to_minutes(m.group("end"))
+
+            if start is not None and end is not None:
+                if end <= start:
+                    end += 24 * 60
+
+                duration = end - start
+                cleaned = (text[:m.start()] + text[m.end():]).strip()
+                return duration, True, cleaned
 
     # 2. hours
     m = _HOURS_RE.search(text)

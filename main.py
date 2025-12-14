@@ -1,68 +1,39 @@
-from datetime import time
+from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
-from datetime import datetime, time as time_type
-
-from autocalendar.parsing import parse_event_title
-from autocalendar.scheduling import Event, WorkDay, autoschedule
-from autocalendar.scheduling.normalize import DEFAULT_DURATION
-
+from autocalendar.app.service import build_schedule
 from autocalendar.inbox import Inbox
-
-inbox = Inbox()
-
-TZ = ZoneInfo("Europe/Moscow")
-
-
-def parsed_to_event(parsed, inbox: Inbox):
-
-    if parsed.d is None:
-        inbox.add(parsed.title)
-        return None
-
-    return Event(
-        title=parsed.title,
-        date=parsed.d,
-        time=parsed.t,
-        duration=DEFAULT_DURATION,
-        priority=1,
-    )
+from autocalendar.scheduling import WorkDay
 
 
 def main():
-    user_input = input()
+    tz = ZoneInfo("Europe/Moscow")
+    inbox = Inbox()
+
+    print("=" * 5 ,"Autocalendar v1.1", "=" * 5)
+    print('Введите названия событий, когда закончите введите "q"')
+
     raw_inputs = []
-
-    while user_input != "q":
-        raw_inputs.append(user_input)
+    while True:
         user_input = input()
+        if user_input == "q":
+            break
+        raw_inputs.append(user_input)
 
-    now = datetime.now(TZ)
-
-    parsed_events = [
-        parse_event_title(
-            raw,
-            now=now,
-            tz=TZ,
-            language="ru",
-        )
-        for raw in raw_inputs
-    ]
-
-    events = [
-        e for e in (
-            parsed_to_event(p, inbox)
-            for p in parsed_events
-        )
-        if e is not None
-    ]
+    now = datetime.now(tz)
 
     work_day = WorkDay(
         start=time(9, 0),
         end=time(18, 0),
     )
 
-    scheduled = autoschedule(events, work_day)
+    scheduled = build_schedule(
+        raw_inputs,
+        now=now,
+        tz=tz,
+        inbox=inbox,
+        work_day=work_day,
+    )
 
     def sort_key(event):
         return (

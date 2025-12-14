@@ -16,25 +16,12 @@ def parse_event_title(raw: str, *, now, tz, language="ru") -> ParsedEvent:
         language=language,
     )
 
-    duration, explicit_duration, text = extract_duration(text)
-
-    # If duration wasn't explicitly found, infer it from a time range
-    # in the original raw text like "10:00-11:30" for fixed events.
-    if duration is None and dt is not None and explicit_time:
-        import re
-
-        m = re.search(r"\b(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})\b", raw)
-        if m:
-            def _to_minutes(s: str) -> int:
-                h, mm = map(int, s.split(":"))
-                return h * 60 + mm
-
-            start_min = _to_minutes(m.group(1))
-            end_min = _to_minutes(m.group(2))
-            if end_min <= start_min:
-                end_min += 24 * 60
-
-            duration = end_min - start_min
+    duration, explicit_duration, text = extract_duration(
+        text,
+        raw_text=raw,
+        dt=dt,
+        explicit_time=explicit_time,
+    )
 
     price, text = extract_money(text)
 
